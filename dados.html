@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mestre dos Dados - RPG Roller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0; /* Slate 200 */
+            background-image: 
+                radial-gradient(circle at top right, rgba(76, 29, 149, 0.15), transparent 400px),
+                radial-gradient(circle at bottom left, rgba(15, 23, 42, 1), #020617 100%);
+            min-height: 100vh;
+        }
+        
+        h1, .dice-result {
+            font-family: 'Cinzel', serif;
+        }
+
+        .dice-btn {
+            background: linear-gradient(145deg, #4f46e5, #3730a3);
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.5), -2px -2px 10px rgba(99, 102, 241, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .dice-btn:hover {
+            background: linear-gradient(145deg, #6366f1, #4338ca);
+            box-shadow: 4px 4px 15px rgba(79, 70, 229, 0.4), -2px -2px 10px rgba(99, 102, 241, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .dice-btn:active {
+            transform: translateY(1px);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .result-container {
+            background: #020617;
+            box-shadow: inset 0px 4px 20px rgba(0,0,0,0.8);
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Brilho sutil para parecer mágico */
+        .result-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, rgba(0,0,0,0) 70%);
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .result-container.active .result-glow {
+            opacity: 1;
+        }
+
+        .history-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .history-scroll::-webkit-scrollbar-track {
+            background: #0f172a; 
+            border-radius: 4px;
+        }
+        .history-scroll::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        .history-scroll::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <main class="w-full max-w-md bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-slate-700 p-6 sm:p-8 mt-4 sm:mt-10">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 tracking-wider">
+                Rolador de Dados
+            </h1>
+            <p class="text-slate-400 text-sm mt-2">Escolha seu destino</p>
+        </header>
+
+        <!-- Display do Resultado -->
+        <div class="result-container w-full h-32 sm:h-40 rounded-xl mb-8 flex items-center justify-center relative">
+            <div class="result-glow"></div>
+            <div id="result-label" class="absolute top-3 left-4 text-slate-500 font-bold text-sm tracking-widest uppercase">
+                Aguardando
+            </div>
+            <div id="main-result" class="dice-result text-6xl sm:text-7xl font-bold text-white z-10 drop-shadow-[0_0_10px_rgba(167,139,250,0.3)]">
+                --
+            </div>
+        </div>
+
+        <!-- Grade de Botões de Dados -->
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+            <button onclick="rollDice(4)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg focus:outline-none">D4</button>
+            <button onclick="rollDice(6)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg focus:outline-none">D6</button>
+            <button onclick="rollDice(8)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg focus:outline-none">D8</button>
+            <button onclick="rollDice(10)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg focus:outline-none">D10</button>
+            <button onclick="rollDice(12)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg focus:outline-none">D12</button>
+            <button onclick="rollDice(20)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg sm:col-span-2 focus:outline-none">D20</button>
+            <button onclick="rollDice(100)" class="dice-btn py-3 sm:py-4 rounded-lg font-bold text-lg sm:col-span-1 focus:outline-none">D100</button>
+        </div>
+
+        <!-- Histórico -->
+        <div class="border-t border-slate-700 pt-6">
+            <h2 class="text-sm font-bold text-slate-400 tracking-widest uppercase mb-3 px-1 flex justify-between items-center">
+                <span>Histórico de Rolagens</span>
+                <button onclick="clearHistory()" class="text-xs text-slate-500 hover:text-red-400 transition">Limpar</button>
+            </h2>
+            <ul id="history-list" class="history-scroll max-h-40 overflow-y-auto space-y-2 pr-2">
+                <!-- Itens do histórico aparecerão aqui -->
+                <li class="text-slate-500 text-center text-sm italic py-4" id="empty-history">
+                    Nenhum dado rolado ainda.
+                </li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        // Referências DOM
+        const mainResultEl = document.getElementById('main-result');
+        const resultLabelEl = document.getElementById('result-label');
+        const historyListEl = document.getElementById('history-list');
+        const emptyHistoryEl = document.getElementById('empty-history');
+        const resultContainer = document.querySelector('.result-container');
+
+        let isRolling = false;
+
+        // ==========================================
+        // O SEGREDO (Modo Trapaça)
+        // ==========================================
+        const secretCode = "jarona";
+        let inputBuffer = "";
+        let cheatActive = false;
+
+        // Escuta todas as teclas digitadas globalmente
+        document.addEventListener('keydown', (e) => {
+            // Ignorar se o usuário estiver rolando o dado no momento
+            if (isRolling) return;
+
+            // Pega apenas letras
+            if (e.key.length === 1 && e.key.match(/[a-z]/i)) {
+                inputBuffer += e.key.toLowerCase();
+                
+                // Mantém o buffer no tamanho máximo da palavra secreta
+                if (inputBuffer.length > secretCode.length) {
+                    inputBuffer = inputBuffer.substring(inputBuffer.length - secretCode.length);
+                }
+
+                // Verifica se digitou a palavra secreta exata
+                if (inputBuffer === secretCode) {
+                    cheatActive = true;
+                    inputBuffer = ""; // Limpa o buffer para não ativar duas vezes sem querer
+                    // Console log silencioso apenas para fins de debug (usuário comum não vê)
+                    console.log("Sussurros antigos guiam seu destino..."); 
+                }
+            }
+        });
+        // ==========================================
+
+        /**
+         * Função principal de rolar dados
+         * @param {number} sides - Número de lados do dado (4, 6, 20, etc)
+         */
+        function rollDice(sides) {
+            if (isRolling) return; // Previne múltiplas rolagens simultâneas
+            
+            isRolling = true;
+            resultLabelEl.textContent = `Rolando D${sides}...`;
+            resultContainer.classList.add('active');
+            mainResultEl.style.color = '#94a3b8'; // Cor neutra durante a rolagem
+
+            // Determina o resultado final antes da animação
+            let finalResult;
+            
+            if (cheatActive) {
+                // A MAGIA ACONTECE AQUI: garante o valor máximo do dado
+                finalResult = sides;
+                cheatActive = false; // Desativa o cheat para a próxima rolagem
+            } else {
+                // Rolagem justa e normal
+                finalResult = Math.floor(Math.random() * sides) + 1;
+            }
+
+            // Efeito visual de números passando rapidamente (para disfarçar e dar imersão)
+            let duration = 600; // ms
+            let interval = 40; // ms
+            let elapsed = 0;
+            
+            let rollAnimation = setInterval(() => {
+                elapsed += interval;
+                
+                // Mostra um número aleatório enquanto rola
+                let tempNum = Math.floor(Math.random() * sides) + 1;
+                mainResultEl.textContent = tempNum;
+                
+                if (elapsed >= duration) {
+                    clearInterval(rollAnimation);
+                    finishRoll(sides, finalResult);
+                }
+            }, interval);
+        }
+
+        /**
+         * Finaliza a rolagem, mostra o resultado e atualiza o histórico
+         */
+        function finishRoll(sides, result) {
+            // Exibe resultado final
+            mainResultEl.textContent = result;
+            resultLabelEl.textContent = `Resultado D${sides}`;
+            
+            // Destaca resultados críticos (Máximo ou 1) visualmente
+            if (result === sides) {
+                mainResultEl.style.color = '#34d399'; // Verde Esmeralda (Sucesso Máximo/Crítico)
+            } else if (result === 1) {
+                mainResultEl.style.color = '#f87171'; // Vermelho (Falha Crítica)
+            } else {
+                mainResultEl.style.color = '#ffffff'; // Branco (Normal)
+            }
+
+            setTimeout(() => {
+                resultContainer.classList.remove('active');
+            }, 300);
+
+            addToHistory(sides, result);
+            isRolling = false;
+        }
+
+        function addToHistory(sides, result) {
+            // Remove a mensagem de "vazio" se existir
+            if (emptyHistoryEl) {
+                emptyHistoryEl.remove();
+            }
+
+            const li = document.createElement('li');
+            li.className = 'bg-slate-800/50 p-3 rounded border border-slate-700 flex justify-between items-center shadow-sm animate-[fadeIn_0.3s_ease-out]';
+            
+            // Formatação de cor para o histórico
+            let resultClass = 'text-white';
+            if (result === sides) resultClass = 'text-emerald-400 font-bold';
+            if (result === 1) resultClass = 'text-red-400 font-bold';
+
+            li.innerHTML = `
+                <span class="text-slate-400">Rolou um <span class="text-indigo-300 font-bold">D${sides}</span></span>
+                <span class="text-xl ${resultClass}">${result}</span>
+            `;
+
+            // Adiciona no topo da lista
+            historyListEl.insertBefore(li, historyListEl.firstChild);
+        }
+
+        function clearHistory() {
+            historyListEl.innerHTML = `
+                <li class="text-slate-500 text-center text-sm italic py-4" id="empty-history">
+                    Nenhum dado rolado ainda.
+                </li>
+            `;
+            mainResultEl.textContent = '--';
+            resultLabelEl.textContent = 'Aguardando';
+            mainResultEl.style.color = '#ffffff';
+        }
+    </script>
+</body>
+</html>
